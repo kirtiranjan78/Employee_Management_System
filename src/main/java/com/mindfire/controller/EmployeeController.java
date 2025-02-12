@@ -137,10 +137,10 @@ public class EmployeeController {
      * @return a ResponseEntity containing the updated list of employees and HTTP status OK
      */
 	@GetMapping("/transfer")
-	public ResponseEntity<List<Employee>> transferEmployee(@RequestParam(value = "emp_id") int emp_id,
-														   @RequestParam(value = "old_dep_id") int old_dep_id,
+	public ResponseEntity<List<Employee>> transferEmployee(@RequestParam(value = "empId") int empId,
+														   @RequestParam(value = "oldDepIdd") int oldDepId,
 														   @RequestParam(value = "new_dep_id") int new_dep_id){
-		employeeService.employeeTransfer(emp_id, old_dep_id, new_dep_id);
+		employeeService.employeeTransfer(empId, oldDepId, new_dep_id);
 		return new ResponseEntity<List<Employee>>(employeeService.getAllEmployees(),HttpStatus.OK);
 	}
 	/**

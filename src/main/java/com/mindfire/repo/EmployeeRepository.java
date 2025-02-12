@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.query.Procedure;
+import org.springframework.stereotype.Repository;
 
 import com.mindfire.entity.Employee;
 
@@ -15,6 +17,7 @@ import com.mindfire.entity.Employee;
  * Extends JpaRepository to provide basic CRUD operations on the Employee entity.
  * Additionally, custom methods for specific employee queries are included here.
  */
+@Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Integer>, CustomEmployeeRepository {
 	
 	List<Employee> findBySalaryGreaterThan(Long salary);
@@ -30,5 +33,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Integer>, Cu
 			+ "JOIN (SELECT DISTINCT salary FROM employee ORDER BY salary DESC LIMIT 3) top_salaries "
 			+ "ON e.salary = top_salaries.salary", nativeQuery = true)
 	List<Employee> findEmployeesWithTop3DistinctSalaries();
+	
+	@Procedure(name = "getAllEmployee")
+	List<Employee> getAllEmployee();
 
 }

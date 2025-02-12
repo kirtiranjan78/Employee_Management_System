@@ -75,9 +75,9 @@ public class EmployeeServiceImpl implements EmployeeService {
 	 * @return List<{@link Employee}
 	 */
 	@Override
+	@Transactional
 	public List<Employee> getAllEmployees() {
-		// TODO Auto-generated method stub
-		List<Employee> list = employeeRepository.findAll();
+		List<Employee> list = employeeRepository.getAllEmployee();
 		return list;
 	}
 	/***
