@@ -3,6 +3,7 @@ package com.mindfire.entity;
 import java.time.LocalDate;
 import java.util.List;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -46,6 +47,7 @@ public class Employee {
      * This field cannot be null.
      */
 	@NotNull(message = "Name can't be null")
+	@Column(name = "employee_name")
 	private String name;
 	/**
      * The email address of the employee.
@@ -53,13 +55,13 @@ public class Employee {
      * This field cannot be null.
      */
 	@Email(message = "Invalid email address")
-	@NotNull(message = "email can't be null")
+	@NotNull(message = "Email can not be null")
 	private String email;
 	/**
      * The salary of the employee.
      * The salary must be a positive value.
      */
-	@Positive(message = "salary must be positive")
+	@Positive(message = "Salary must be positive")
 	private double salary;
 	/**
      * The date when the employee joined the company.
