@@ -1,8 +1,10 @@
 package com.mindfire.entity;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -47,7 +49,6 @@ public class Employee {
      * This field cannot be null.
      */
 	@NotNull(message = "Name can't be null")
-	@Column(name = "employee_name")
 	private String name;
 	/**
      * The email address of the employee.
@@ -68,6 +69,6 @@ public class Employee {
      */
 	private LocalDate dateOfJoining;
 	
-	@ManyToMany(mappedBy = "employees")
-	private List<Department> departments;
+	@ManyToMany(mappedBy = "employees" )
+	private List<Department> departments=new ArrayList<>();
 }

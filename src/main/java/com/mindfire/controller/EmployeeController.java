@@ -1,11 +1,14 @@
 package com.mindfire.controller;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,7 +20,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mindfire.entity.Employee;
+import com.mindfire.model.PerformanceResponse;
 import com.mindfire.service.EmployeeService;
+
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.validation.Valid;
 
 /**
@@ -28,6 +37,7 @@ import jakarta.validation.Valid;
  */
 @RestController
 @RequestMapping("/employee")
+@CrossOrigin(origins = "http://localhost:5173")
 public class EmployeeController {
 	
 	@Autowired
@@ -50,9 +60,15 @@ public class EmployeeController {
      * @param salary the new salary to be assigned to the employee
      * @return a ResponseEntity containing the updated employee and HTTP status OK
      */
-	@PutMapping("/update/{id}")
+	@PutMapping("/updateSalary/{id}")
 	public ResponseEntity<Employee> updateEmployeeSalary(@PathVariable int id,@RequestParam double salary) {
 		Employee emp = employeeService.updateEmployeeSalary(id, salary);
+		return new ResponseEntity<Employee>(emp, HttpStatus.OK);
+	}
+	
+	@PutMapping("/update/{id}")
+	public ResponseEntity<Employee> updateEmployee(@PathVariable int id,@RequestBody Employee employee) {
+		Employee emp = employeeService.updatEmployee(id, employee);
 		return new ResponseEntity<Employee>(emp, HttpStatus.OK);
 	}
 	/**
@@ -124,9 +140,9 @@ public class EmployeeController {
      * @param page the page number to fetch (default value is 0)
      * @return a ResponseEntity containing a list of employees for the requested page and HTTP status OK
      */
-	@GetMapping("/get-in-batches")
-	public ResponseEntity<List<Employee>> getEmployeeByPaging(@RequestParam(value = "page", defaultValue = "0") int page){
-		return new ResponseEntity<List<Employee>>(employeeService.getEmployeesInBatches(page, 5),HttpStatus.OK);
+	@GetMapping("/get-in-batches/{page}/{pageNo}")
+	public ResponseEntity<Page<Employee>> getEmployeeByPaging(@PathVariable int page,@PathVariable int pageNo){
+		return new ResponseEntity<Page<Employee>>(employeeService.getEmployeesInBatches(page, pageNo),HttpStatus.OK);
 	}
 	/**
      * EndPoint to transfer an employee from one department to another.
@@ -154,5 +170,67 @@ public class EmployeeController {
 		employeeService.updateBulkSalary(percentage);
 		return new ResponseEntity<List<Employee>>(employeeService.getAllEmployees(),HttpStatus.OK);
 	}
+	/**
+     * Endpoint to get an employee by their ID.
+     * 
+     * @param id The ID of the employee to be fetched.
+     * @return A {@link ResponseEntity} containing the {@link Employee} data and an HTTP status code.
+     *         If the employee is found, a status of {@code HttpStatus.OK} is returned.
+     *         Otherwise, an appropriate error response is returned.
+     */
+	@GetMapping("/getById/{id}")
+	public ResponseEntity<Employee> getEmployeeById(@PathVariable int id) {
+		Employee emp = employeeService.getEmployeeById(id);
+		return new ResponseEntity<Employee>(emp, HttpStatus.OK);
+	}
+	/**
+     * Endpoint to get performance data for an employee by their ID.
+     * This method uses the {@link CircuitBreaker}, {@link Retry}, and {@link Bulkhead} patterns
+     * to handle failures, retries, and concurrency issues during the request.
+     * 
+     * @param id The ID of the employee whose performance records are to be fetched.
+     * @return A {@link ResponseEntity} containing a list of {@link PerformanceResponse} objects
+     *         and an HTTP status code. If the performance data is found, a status of {@code HttpStatus.OK} is returned.
+     *         In case of failure, the {@code performanceFallback} method will be invoked.
+     */
+	@GetMapping("/getPerformanceById/{id}")
+	@CircuitBreaker(name = "performanceBreaker", fallbackMethod = "performanceFallback")
+	@Retry(name = "retryPerformance", fallbackMethod = "performanceFallback")
+	@Bulkhead(name = "performanceBulkHead", fallbackMethod = "performanceFallback")
+	public ResponseEntity<List<PerformanceResponse>> getPerformanceById(@PathVariable int id) {
+		return new ResponseEntity<List<PerformanceResponse>>(employeeService.getPerformanceByEmployeeId(id), HttpStatus.OK);
+	}
 	
+	 /**
+     * Endpoint to add performance data for an employee.
+     * 
+     * @param performanceResponse The {@link PerformanceResponse} object containing the performance data to be added.
+     * @param id The ID of the employee to whom the performance data should be added.
+     * @return A {@link ResponseEntity} containing the added {@link PerformanceResponse} data
+     *         and an HTTP status code of {@code HttpStatus.CREATED} if the performance was successfully added.
+     */
+	@PostMapping("/addPerformance/{id}")
+	public ResponseEntity<PerformanceResponse> addPerformanceToEmployee(@RequestBody PerformanceResponse performanceResponse,@PathVariable int id){
+		return new ResponseEntity<PerformanceResponse>(employeeService.addPerformanceToEmployee(performanceResponse, id),HttpStatus.CREATED);
+	}
+	/**
+     * Fallback method used in case of failure during the request to get performance data.
+     * This method is triggered when the CircuitBreaker, Retry, or Bulkhead patterns detect a failure.
+     * It returns a default performance response with a rating of 0 and the error message.
+     * 
+     * @param id The ID of the employee for whom the performance data could not be fetched.
+     * @param ex The exception that triggered the fallback (providing error details).
+     * @return A {@link ResponseEntity} containing a list of {@link PerformanceResponse} objects
+     *         with the default response (rating 0, feedback with error message) and HTTP status code {@code HttpStatus.OK}.
+     */
+	public ResponseEntity<List<PerformanceResponse>> performanceFallback(int id,Exception ex) {
+		List<PerformanceResponse> list=new ArrayList<>();
+		PerformanceResponse response=PerformanceResponse.builder()
+										.rating(0)
+										.feedback(ex.getMessage())
+										.employeeId(id)
+										.build();
+		list.add(response);
+		return new ResponseEntity<List<PerformanceResponse>>(list, HttpStatus.OK);
+	}
 }

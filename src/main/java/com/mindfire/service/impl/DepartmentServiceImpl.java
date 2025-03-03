@@ -4,6 +4,10 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.mindfire.entity.Department;
@@ -71,6 +75,36 @@ public class DepartmentServiceImpl implements DepartmentService {
 			map.put(department.getName(), department.getEmployees().size());
 		}
 		return map;
+	}
+
+	@Override
+	public List<Department> getAllDepartments() {
+		List<Department> departments=departmentRepository.findAll();
+		return departments;
+	}
+
+	@Override
+	public Page<Department> getDepartmentInBatches(int pageNo, int pageSize) {
+		Pageable pageable=PageRequest.of(pageNo, pageSize);
+		Page<Department> page = departmentRepository.findAll(pageable);
+		return page;
+	}
+
+	@Override
+	public Department getDepartmentById(int id) {
+		Department department = departmentRepository.findById(id).get();
+		return department;
+	}
+
+	@Override
+	public Department updatDepartment(int id, Department department) {
+		Department dept=departmentRepository.findById(id).get();
+		if(dept!=null) {
+			dept.setName(department.getName());
+			dept.setLocation(department.getLocation());
+		}
+		
+		return addDepartment(dept);
 	}
 	
 	

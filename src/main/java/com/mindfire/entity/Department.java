@@ -1,5 +1,6 @@
 package com.mindfire.entity;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -64,5 +65,5 @@ public class Department {
 		      inverseJoinColumns = @JoinColumn(name = "employee_id")
 		    )
 	@JsonIgnore
-	private List<Employee> employees;
+	private List<Employee> employees=new ArrayList<>();
 }
