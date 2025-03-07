@@ -1,0 +1,126 @@
+version: '3.7'
+
+services:
+  mysql:
+    container_name: mysqldb
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: student
+    ports:
+      - "3307:3306"
+    networks:
+      - sql-web-net
+    restart: unless-stopped
+    volumes:
+      - mysql-data:/var/lib/mysql  # Persist MySQL data
+
+  servicereg:
+    image: kirtiranjan78/eurekaserverimg
+    container_name: servicereg
+    ports:
+      - "8761:8761"
+    depends_on:
+      - mysql
+      - zipkin
+    restart: on-failure
+    networks:
+      - microservice-network
+      - sql-web-net
+
+  config-server:
+    image: kirtiranjan78/configserverimg
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    depends_on:
+      - servicereg
+    networks:
+      - microservice-network
+      - sql-web-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    restart: on-failure
+
+  ems:
+    image: kirtiranjan78/emsimage
+    container_name: ems-container
+    ports:
+      - "2200:2200"
+    depends_on:
+      - servicereg
+      - pms
+      - mysql
+    networks:
+      - microservice-network
+      - sql-web-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    restart: on-failure
+
+  pms:
+    image: kirtiranjan78/psimage
+    container_name: pms-container
+    ports:
+      - "8081:8081"
+    depends_on:
+      - servicereg
+      - mysql
+      - config-server
+    networks:
+      - microservice-network
+      - sql-web-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    restart: on-failure
+
+  ems-gateway:
+    image: kirtiranjan78/apigatewayimg
+    container_name: ems-gateway
+    ports:
+      - "8765:8080"
+    depends_on:
+      - servicereg
+      - redis
+    networks:
+      - microservice-network
+      - sql-web-net
+    restart: on-failure
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservice-network
+      - sql-web-net
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - microservice-network
+      - sql-web-net
+
+  ui:
+    image: kirtiranjan78/employee-management-ui:v1
+    container_name: ui-container
+    ports:
+      - "5173:5173"
+    depends_on:
+      - ems
+    networks:
+      - microservice-network
+
+networks:
+  microservice-network:
+    driver: bridge
+  sql-web-net:
+    driver: bridge
+
+volumes:
+  mysql-data:  # Define volume for MySQL
